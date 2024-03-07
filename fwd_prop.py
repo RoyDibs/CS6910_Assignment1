@@ -15,9 +15,6 @@ class ForwardPropagation():
         self.parameters = parameters
         self.activation_fn = activation_fn
 
-    # def softmax(x):
-    #     return np.exp(x) / np.sum(np.exp(x), axis=0)
-
     def forward_propagation(self, X, layer_dims):
         caches = []
         A = X
