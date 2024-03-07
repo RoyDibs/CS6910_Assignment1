@@ -9,28 +9,55 @@ Original file is located at
 
 import numpy as np
 
-"""
-Activation functions
-"""
-
-class Sigmoid():
-
-    def __init__(self):
-        pass
+class Activation:
+    def __init__(self, activation_function='sigmoid'):
+        self.activation_function = activation_function
 
     def value(self, x):
-      return 1/(1 + np.exp(-x))
+        if self.activation_function == 'sigmoid':
+            return self.sigmoid_value(x)
+        elif self.activation_function == 'tanh':
+            return self.tanh_value(x)
+        elif self.activation_function == 'identity':
+            return self.identity_value(x)
+        elif self.activation_function == 'ReLU':
+            return self.ReLU_value(x)
+        else:
+            raise ValueError("Unknown activation function")
 
     def grad(self, x):
-      return self.value(x)*(1 - self.value(x))
+        if self.activation_function == 'sigmoid':
+            return self.sigmoid_grad(x)
+        elif self.activation_function == 'tanh':
+            return self.tanh_grad(x)
+        elif self.activation_function == 'identity':
+            return self.identity_grad(x)
+        elif self.activation_function == 'ReLU':
+            return self.ReLU_grad(x)
+        else:
+            raise ValueError("Unknown activation function")
 
-class tanh():
+    def sigmoid_value(self, x):
+        return 1 / (1 + np.exp(-x))
 
-    def __init__(self):
-        pass
+    def sigmoid_grad(self, x):
+        return self.sigmoid_value(x) * (1 - self.sigmoid_value(x))
 
-    def value(self, x):
-      return (np.exp(x) - np.exp(-x)) / (np.exp(x) + np.exp(-x))
+    def tanh_value(self, x):
+        return (np.exp(x) - np.exp(-x)) / (np.exp(x) + np.exp(-x))
 
-    def grad(self, x):
-      return 1 - self.value(x)**2
+    def tanh_grad(self, x):
+        return 1 - self.tanh_value(x)**2
+
+    def identity_value(self, x):
+        return x
+
+    def identity_grad(self, x):
+        return 1
+
+    def ReLU_value(self, x):
+        return np.maximum(0, x)
+
+    def ReLU_grad(self, x):
+        return np.where(x > 0, 1, 0)
+
