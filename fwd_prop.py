@@ -11,11 +11,12 @@ import numpy as np
 from AF import Sigmoid, tanh, identity, ReLU, softmax
 
 class ForwardPropagation():
-    def __init__(self, parameters, activation_fn):
+    def __init__(self):
+        pass
+
+    def forward_propagation(self, X, layer_dims, parameters, activation_fn):
         self.parameters = parameters
         self.activation_fn = activation_fn
-
-    def forward_propagation(self, X, layer_dims):
         caches = []
         A = X
         L = len(layer_dims) - 1
@@ -26,7 +27,7 @@ class ForwardPropagation():
             b = self.parameters[f'b{l}']
             Z = np.dot(W, A_prev) + b
             activation = self.activation_fn.value(Z)
-            cache = (A_prev, W, b, Z, activation)
+            cache = (A_prev, W, b, Z, self.activation_fn)  # Include the activation function object in the cache
             caches.append(cache)
             A = activation
 
@@ -37,7 +38,7 @@ class ForwardPropagation():
         ZL = np.dot(WL, AL_prev) + bL
         output = softmax().value(ZL)  # Using softmax activation for output layer
 
-        cache = (AL_prev, WL, bL, ZL, output)
+        cache = (AL_prev, WL, bL, ZL, softmax())  # Include softmax activation function in the cache
         caches.append(cache)
 
         return output, caches
