@@ -8,6 +8,8 @@ Original file is located at
 """
 
 import numpy as np
+from AF import Sigmoid, tanh, identity, ReLU, softmax
+
 
 class BackPropagation:
     def __init__(self):
@@ -18,7 +20,6 @@ class BackPropagation:
         m = Y.shape[1]
         cost = -1/m * np.sum(Y * np.log(Y_pred))
         return np.squeeze(cost)
-
     @staticmethod
     def mean_squared_error_loss(Y, Y_pred):
         m = Y.shape[1]
@@ -32,20 +33,20 @@ class BackPropagation:
 
         # Derivative of the loss function
         if loss_function == 'cross_entropy':
-            dAL = - (np.divide(Y, Y_pred) - np.divide(1 - Y, 1 - Y_pred))
+            dAL = - (Y - Y_pred)
         elif loss_function == 'mse':
             dAL = - (Y - Y_pred)
 
         # Output layer gradients
         current_cache = caches[L - 1]
-        activation_fn = current_cache[-1].__class__.__name__
+        activation_fn = current_cache[-1].__class__.__name__  # Extract activation function class name from cache
         grads["dA" + str(L)], grads["dW" + str(L)], grads["db" + str(L)] = self.linear_activation_backward(
             dAL, current_cache, activation_fn)
 
         # Hidden layers gradients
         for l in reversed(range(L - 1)):
             current_cache = caches[l]
-            activation_fn = current_cache[-1].__class__.__name__
+            activation_fn = current_cache[-1].__class__.__name__  # Extract activation function class name from cache
             dA_prev_temp, dW_temp, db_temp = self.linear_activation_backward(
                 grads["dA" + str(l + 2)], current_cache, activation_fn)
             grads["dA" + str(l + 1)] = dA_prev_temp
@@ -54,20 +55,21 @@ class BackPropagation:
 
         return grads
 
+
     @staticmethod
     def linear_activation_backward(dA, cache, activation_fn):
-        A_prev, W, b, Z = cache[:-1]  # Extract all the last element from cache except the last one
+        A_prev, W, b, Z = cache[:-1]  # Extract all but the last element from cache
 
-        if activation_fn == "Sigmoid":
+        if activation_fn == Sigmoid().__class__.__name__:
             activation = Sigmoid()
             dZ = dA * activation.grad(Z)
-        elif activation_fn == "tanh":
+        elif activation_fn == tanh().__class__.__name__:
             activation = tanh()
             dZ = dA * activation.grad(Z)
-        elif activation_fn == "ReLU":
+        elif activation_fn == ReLU().__class__.__name__:
             activation = ReLU()
             dZ = dA * activation.grad(Z)
-        elif activation_fn == "softmax":
+        elif activation_fn == softmax().__class__.__name__:
             activation = softmax()
             dZ = dA * activation.grad(Z)
         else:
