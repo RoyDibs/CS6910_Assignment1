@@ -8,123 +8,128 @@ Original file is located at
 """
 
 import numpy as np
+from fwd_prop import ForwardPropagation
+from back_prop import BackPropagation
 
 class Optimiser:
     def __init__(self):
         pass
 
-    def stochastic_gradient_descent(self, parameters, grads, learning_rate):
+    def stochastic_gradient_descent(self, parameters, grads, learning_rate, alpha):
         updated_parameters = parameters.copy()
 
         for param_name in parameters.keys():
             grad_key = 'd' + param_name
 
-            updated_parameters[param_name] -= learning_rate * grads[grad_key]
+            # Update parameters with L2 regularization
+            updated_parameters[param_name] -= learning_rate * (grads[grad_key] + alpha * parameters[param_name])
 
         return updated_parameters
 
 
-    def momentum(self, parameters, grads, velocities, beta, learning_rate):
+    def momentum(self, parameters, grads, velocities, beta, learning_rate, alpha):
         updated_parameters = parameters.copy()
 
         for param_name in parameters.keys():
             grad_key = 'd' + param_name
 
-            # Update the velocities
-            velocities[param_name] = beta * velocities[param_name] + learning_rate * grads[grad_key]
+            # Update velocities
+            velocities[param_name] = beta * velocities[param_name] + learning_rate * (grads[grad_key] + alpha * parameters[param_name])
 
-            # Update the parameters using the updated velocities
+            # Update parameters using velocities
             updated_parameters[param_name] -= velocities[param_name]
 
         return updated_parameters
 
 
-    def nestrov(self, X_batch, y_batch, parameters, velocities, beta, learning_rate, loss_function, activation_fn):
+    def nestrov(self, X_batch, y_batch, parameters, velocities, beta, learning_rate, loss_function, activation_fn, alpha, layer_dims):
         updated_parameters = parameters.copy()  # Make a copy of the original parameters
         future_parameters = {}
 
         for param_name in parameters.keys():
             grad_key = 'd' + param_name
-            # Update the velocities based on the gradients evaluated at the approximate future position
+            # Update velocities based on gradients evaluated at the approximate future position
             future_parameters[param_name] = parameters[param_name] - beta * velocities[param_name]
+
+        forward_propagator = ForwardPropagation()
+        backpropagator = BackPropagation()
 
         # Forward propagation
         AL, caches = forward_propagator.forward_propagation(X_batch, layer_dims, future_parameters, activation_fn)
         # Backward propagation
-        grads = backpropagator.backward_propagation(y_batch, AL, caches, loss_function)
+        grads = backpropagator.backward_propagation(y_batch, AL, caches, loss_function, parameters, alpha)
 
         for param_name in parameters.keys():
             grad_key = 'd' + param_name
             future_grads = grads[grad_key]  # Gradients evaluated at the approximate future position
-            velocities[param_name] = beta * velocities[param_name] + learning_rate * future_grads
-            # Update the parameters using the updated velocities
+            velocities[param_name] = beta * velocities[param_name] + learning_rate * (future_grads + alpha * parameters[param_name])
+            # Update parameters using updated velocities
             updated_parameters[param_name] -= velocities[param_name]
 
         return updated_parameters
 
 
-    def rmsprop(self, parameters, grads, velocities, beta, learning_rate):
+    def rmsprop(self, parameters, grads, velocities, beta, learning_rate, alpha, epsilon):
         updated_parameters = parameters.copy()
-        epsilon = 1e-4
 
         for param_name in parameters.keys():
             grad_key = 'd' + param_name
 
-            # Update the velocities
-            velocities[param_name] = beta * velocities[param_name] + (1 - beta) * grads[grad_key]**2
+            # Update velocities
+            velocities[param_name] = beta * velocities[param_name] + (1 - beta) * np.square(grads[grad_key] + alpha * parameters[param_name])
 
-            # Update the parameters using the updated velocities
-            updated_parameters[param_name] -= (learning_rate/np.sqrt(velocities[param_name] + epsilon)) * grads[grad_key]
+            # Update parameters using updated velocities
+            updated_parameters[param_name] -= (learning_rate/np.sqrt(velocities[param_name] + epsilon)) * (grads[grad_key] + alpha * parameters[param_name])
 
         return updated_parameters
 
 
-    def adam(self, parameters, grads, moment, velocities, beta1, beta2, learning_rate):
-      updated_parameters = parameters.copy()
-      epsilon = 1e-4
-      moment_hat = {}
-      velocities_hat = {}
+    def adam(self, parameters, grads, moment, velocities, beta1, beta2, learning_rate, alpha, epsilon):
+        updated_parameters = parameters.copy()
+        moment_hat = {}
+        velocities_hat = {}
 
-      for param_name in parameters.keys():
-          grad_key = 'd' + param_name
+        for param_name in parameters.keys():
+            grad_key = 'd' + param_name
 
-          # Update the moment
-          moment[param_name] = beta1 * moment[param_name] + (1 - beta1) * grads[grad_key]
+            # Update moment
+            moment[param_name] = beta1 * moment[param_name] + (1 - beta1) * (grads[grad_key] + alpha * parameters[param_name])
 
-          moment_hat[param_name] = moment[param_name] / (1 - beta1)
+            moment_hat[param_name] = moment[param_name] / (1 - beta1)
 
-          # Update the velocities
-          velocities[param_name] = beta2 * velocities[param_name] + (1 - beta2) * grads[grad_key]**2
+            # Update velocities
+            velocities[param_name] = beta2 * velocities[param_name] + (1 - beta2) * (grads[grad_key] + alpha * parameters[param_name])**2
 
-          velocities_hat[param_name] = velocities[param_name] / (1 - beta2)
+            velocities_hat[param_name] = velocities[param_name] / (1 - beta2)
 
-          # Update the parameters using the updated velocities
-          updated_parameters[param_name] -= (learning_rate/np.sqrt(velocities[param_name] + epsilon)) * moment_hat[param_name]
+            # Update parameters using updated velocities
+            updated_parameters[param_name] -= (learning_rate / (np.sqrt(velocities_hat[param_name]) + epsilon)) * moment_hat[param_name]
 
-      return updated_parameters
+        return updated_parameters
 
 
-    def nadam(self, parameters, grads, moment, velocities, beta1, beta2, learning_rate):
-      updated_parameters = parameters.copy()
-      epsilon = 1e-4
-      moment_hat = {}
-      velocities_hat = {}
 
-      for param_name in parameters.keys():
-          grad_key = 'd' + param_name
+    def nadam(self, parameters, grads, moment, velocities, beta1, beta2, learning_rate, alpha, epsilon):
+        updated_parameters = parameters.copy()
+        moment_hat = {}
+        velocities_hat = {}
 
-          # Update the moment
-          moment[param_name] = beta1 * moment[param_name] + (1 - beta1) * grads[grad_key]
+        for param_name in parameters.keys():
+            grad_key = 'd' + param_name
 
-          moment_hat[param_name] = moment[param_name] / (1 - beta1)
+            # Update moment
+            moment[param_name] = beta1 * moment[param_name] + (1 - beta1) * grads[grad_key]
 
-          # Update the velocities
-          velocities[param_name] = beta2 * velocities[param_name] + (1 - beta2) * grads[grad_key]**2
+            # Update velocities
+            velocities[param_name] = beta2 * velocities[param_name] + (1 - beta2) * grads[grad_key]**2
 
-          velocities_hat[param_name] = velocities[param_name] / (1 - beta2)
+            # Bias correction
+            moment_hat[param_name] = moment[param_name] / (1 - beta1)
+            velocities_hat[param_name] = velocities[param_name] / (1 - beta2)
 
-          # Update the parameters using the updated velocities
-          updated_parameters[param_name] -= (learning_rate/np.sqrt(velocities[param_name] + epsilon)) * (beta1 * moment_hat[param_name] + (((1 - beta1) * grads[grad_key])/ (1 - beta1)))
+            # Update parameters using Nesterov Adam update rule
+            updated_parameters[param_name] -= (learning_rate / (np.sqrt(velocities_hat[param_name]) + epsilon)) * (
+                        beta1 * moment_hat[param_name] + ((1 - beta1) * grads[grad_key]) / (1 - beta1))
 
-      return updated_parameters
+        return updated_parameters
 
