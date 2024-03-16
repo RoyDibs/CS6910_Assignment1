@@ -63,7 +63,12 @@ class softmax():
         pass
 
     def value(self, x):
-      return np.exp(x) / np.sum(np.exp(x), axis=0)
+        x_stable = x - np.max(x, axis=0, keepdims=True)
+        exp_values = np.exp(x_stable)
+        softmax_values = exp_values / np.sum(exp_values, axis=0, keepdims=True)
+        return softmax_values
+    # def value(self, x):
+    #   return np.exp(x) / np.sum(np.exp(x), axis=0)
 
     def grad(self, x):
       return self.value(x) * (1 - self.value(x))
