@@ -16,24 +16,35 @@ class BackPropagation:
         pass
 
     @staticmethod
-    def cross_entropy_loss(Y, Y_pred):
+    def cross_entropy_loss(Y, Y_pred, parameters, alpha):
         m = Y.shape[1]
-        cost = -1/m * np.sum(Y * np.log(Y_pred))
-        return np.squeeze(cost)
-    @staticmethod
-    def mean_squared_error_loss(Y, Y_pred):
-        m = Y.shape[1]
-        cost = 1/(2*m) * np.sum((Y - Y_pred)**2)
-        return np.squeeze(cost)
+        cross_entropy_cost = -1/m * np.sum(Y * np.log(Y_pred + 1e-6))
+        regularization_term = 0
+        for key in parameters:
+            if key.startswith('W'):
+                regularization_term += np.sum(np.square(parameters[key]))
+        l2_regularization_cost = (alpha / (2 * m)) * regularization_term
+        return cross_entropy_cost + l2_regularization_cost
 
-    def backward_propagation(self, Y, Y_pred, caches, loss_function):
+    @staticmethod
+    def mean_squared_error_loss(Y, Y_pred, parameters, alpha):
+        m = Y.shape[1]
+        mse_cost = 1/(2*m) * np.sum((Y - Y_pred)**2)
+        regularization_term = 0
+        for key in parameters:
+            if key.startswith('W'):
+                regularization_term += np.sum(np.square(parameters[key]))
+        l2_regularization_cost = (alpha / (2 * m)) * regularization_term
+        return mse_cost + l2_regularization_cost
+
+    def backward_propagation(self, Y, Y_pred, caches, loss_function, parameters, alpha):
         grads = {}
         m = Y.shape[1]
         L = len(caches)
 
         # Derivative of the loss function
         if loss_function == 'cross_entropy':
-            dAL = - (Y - Y_pred)
+            dAL = - Y / (Y_pred + 1e-6)
         elif loss_function == 'mse':
             dAL = - (Y - Y_pred)
 
@@ -41,23 +52,22 @@ class BackPropagation:
         current_cache = caches[L - 1]
         activation_fn = current_cache[-1].__class__.__name__  # Extract activation function class name from cache
         grads["dA" + str(L)], grads["dW" + str(L)], grads["db" + str(L)] = self.linear_activation_backward(
-            dAL, current_cache, activation_fn)
+            dAL, current_cache, activation_fn, parameters, alpha)
 
         # Hidden layers gradients
         for l in reversed(range(L - 1)):
             current_cache = caches[l]
             activation_fn = current_cache[-1].__class__.__name__  # Extract activation function class name from cache
             dA_prev_temp, dW_temp, db_temp = self.linear_activation_backward(
-                grads["dA" + str(l + 2)], current_cache, activation_fn)
+                grads["dA" + str(l + 2)], current_cache, activation_fn, parameters, alpha)
             grads["dA" + str(l + 1)] = dA_prev_temp
             grads["dW" + str(l + 1)] = dW_temp
             grads["db" + str(l + 1)] = db_temp
 
         return grads
 
-
     @staticmethod
-    def linear_activation_backward(dA, cache, activation_fn):
+    def linear_activation_backward(dA, cache, activation_fn, parameters, alpha):
         A_prev, W, b, Z = cache[:-1]  # Extract all but the last element from cache
 
         if activation_fn == Sigmoid().__class__.__name__:
@@ -76,7 +86,7 @@ class BackPropagation:
             raise ValueError("Unsupported activation function")
 
         m = A_prev.shape[1]
-        dW = 1/m * np.dot(dZ, A_prev.T)
+        dW = 1/m * np.dot(dZ, A_prev.T) + (alpha / m) * W  # Added L2 regularization term
         db = 1/m * np.sum(dZ, axis=1, keepdims=True)
         dA_prev = np.dot(W.T, dZ)
 
