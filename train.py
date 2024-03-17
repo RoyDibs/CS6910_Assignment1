@@ -68,16 +68,18 @@ parser.add_argument("-sz", "--hidden_size", type=int, nargs='+', default=[4], he
 parser.add_argument("-a", "--activation", nargs='+', default=['ReLU'], choices=["identity", "sigmoid", "tanh", "ReLU"], help="Activation function")
 parser.add_argument("-w_d", "--weight_decay", type=float, nargs='+', default=[0.0], help="Weight decay (alpha)")
 parser.add_argument("-wi", "--weight_init", nargs='+', default=['random'], choices=["random", "xavier"], help="Weight initialization method (random or Xavier)")
-parser.add_argument("-beta", "--beta", default=0.9, help="beta for momentum, nestrov and rmsprop")
-parser.add_argument("-beta1", "--beta1", default=0.9, help="beta1 for adam and nadam")
-parser.add_argument("-beta2", "--beta2", default=0.999, help="beta2 for adam and nadam")
-parser.add_argument("-eps", "--epsilon", default=0.000001, help="Epsilon used by optimizers")
+parser.add_argument("-beta", "--beta", type=float, default=0.5, help="beta for momentum, nestrov and rmsprop")
+parser.add_argument("-beta1", "--beta1", type=float, default=0.5, help="beta1 for adam and nadam")
+parser.add_argument("-beta2", "--beta2", type=float, default=0.5, help="beta2 for adam and nadam")
+parser.add_argument("-eps", "--epsilon", type=float, default=0.000001, help="Epsilon used by optimizers")
+parser.add_argument("-swp_name", "--sweep_name", default="test of code", help="Name of the sweep")
+parser.add_argument("-swp_count", "--sweep_count", default=2, help="Number of runs for sweep")
 
 args = parser.parse_args()
 
 sweep_config = {
     'method': 'bayes',
-    'name' : 'sweep cross updated corrected',
+    'name' : args.sweep_name,
     'metric': {
       'name': 'val_accuracy',
       'goal': 'maximize'
@@ -115,7 +117,7 @@ sweep_config = {
     }
 }
 
-sweep_id = wandb.sweep(sweep=sweep_config, project='CS6910_Assignment_1')
+sweep_id = wandb.sweep(sweep=sweep_config, project=args.wandb_project)
 
 
 # Data preprocessing
@@ -263,6 +265,6 @@ def main():
         accuracy = calculate_accuracy(predictions, y_test)
         wandb.log({'Test_Accuracy': accuracy})
 
-wandb.agent(sweep_id, function=main,count=200)
+wandb.agent(sweep_id, function=main,count=args.sweep_count)
 wandb.finish()
 
