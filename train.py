@@ -66,7 +66,7 @@ parser.add_argument("-lr", "--learning_rate", type=float, nargs='+', default=[0.
 parser.add_argument("-nhl", "--num_layers", type=int, nargs='+', default=[1], help="Number of hidden layers")
 parser.add_argument("-sz", "--hidden_size", type=int, nargs='+', default=[4], help="Number of hidden neurons in a feedforward layer")
 parser.add_argument("-a", "--activation", nargs='+', default=['ReLU'], choices=["identity", "sigmoid", "tanh", "ReLU"], help="Activation function")
-parser.add_argument("-alpha", "--alpha", type=float, nargs='+', default=[0.0], help="Weight decay (alpha)")
+parser.add_argument("-w_d", "--weight_decay", type=float, nargs='+', default=[0.0], help="Weight decay (alpha)")
 parser.add_argument("-wi", "--weight_init", nargs='+', default=['random'], choices=["random", "xavier"], help="Weight initialization method (random or Xavier)")
 parser.add_argument("-beta", "--beta", default=0.9, help="beta for momentum, nestrov and rmsprop")
 parser.add_argument("-beta1", "--beta1", default=0.9, help="beta1 for adam and nadam")
@@ -77,7 +77,7 @@ args = parser.parse_args()
 
 sweep_config = {
     'method': 'bayes',
-    'name' : 'sweep cross entropy final',
+    'name' : 'sweep cross updated corrected',
     'metric': {
       'name': 'val_accuracy',
       'goal': 'maximize'
@@ -93,7 +93,7 @@ sweep_config = {
             'values': args.hidden_size
         },
         'weight_decay':{
-            'values': args.alpha
+            'values': args.weight_decay
         },
         'learning_rate':{
             'values': args.learning_rate
@@ -198,6 +198,8 @@ def main():
         velocities = {param_name: np.zeros_like(param) for param_name, param in parameters.items()}
         moment = {param_name: np.zeros_like(param) for param_name, param in parameters.items()} # for adam
 
+        k_step = 3
+        step = num_batches // k_step
         for epoch in range(max_epoch):
             for batch_idx in range(num_batches):
                 start_idx = batch_idx * batch_size
@@ -236,22 +238,24 @@ def main():
                 else:
                     raise ValueError("Unsupported optimizer type")
 
-                # validation
-                AL_val, caches_val = forward_propagator.forward_propagation(x_val_scaled, layer_dims, parameters, activation_fn)
 
-                # Compute loss
-                if loss_function == 'cross_entropy':
-                    val_loss = backpropagator.cross_entropy_loss(y_val_one_hot, AL_val, parameters, alpha)
-                elif loss_function == 'mse':
-                    val_loss = backpropagator.mean_squared_error_loss(y_val_one_hot, AL_val, parameters, alpha)
-                else:
-                    raise ValueError("Unsupported loss function")
 
-                if batch_idx % batch_size == 0:
-                    #Calculate validation accuracy
-                    predictions_val = predict(x_val_scaled, parameters, forward_propagator, layer_dims, activation_fn)
-                    val_accuracy = calculate_accuracy(predictions_val, y_val)
-                    wandb.log({'Epoch': epoch + 1, 'Train Loss': cost, 'val_loss': val_loss, 'val_accuracy': val_accuracy})
+                #Calculate validation accuracy
+                if batch_idx % step == 0:
+                      # validation
+                      AL_val, caches_val = forward_propagator.forward_propagation(x_val_scaled, layer_dims, parameters, activation_fn)
+
+                      # Compute loss
+                      if loss_function == 'cross_entropy':
+                          val_loss = backpropagator.cross_entropy_loss(y_val_one_hot, AL_val, parameters, alpha)
+                      elif loss_function == 'mse':
+                          val_loss = backpropagator.mean_squared_error_loss(y_val_one_hot, AL_val, parameters, alpha)
+                      else:
+                          raise ValueError("Unsupported loss function")
+
+                      predictions_val = predict(x_val_scaled, parameters, forward_propagator, layer_dims, activation_fn)
+                      val_accuracy = calculate_accuracy(predictions_val, y_val)
+                      wandb.log({'Epoch': epoch + 1, 'Train Loss': cost, 'val_loss': val_loss, 'val_accuracy': val_accuracy})
 
 
         # Test
