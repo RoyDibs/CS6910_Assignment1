@@ -44,9 +44,9 @@ class BackPropagation:
 
         # Derivative of the loss function
         if loss_function == 'cross_entropy':
-            dAL = - (Y - Y_pred)
+            dAL = -(Y - Y_pred)
         elif loss_function == 'mse':
-            dAL = - (Y - Y_pred)
+            dAL = (Y - Y_pred)
 
         # Output layer gradients
         current_cache = caches[L - 1]
