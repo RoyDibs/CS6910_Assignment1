@@ -44,7 +44,7 @@ class BackPropagation:
 
         # Derivative of the loss function
         if loss_function == 'cross_entropy':
-            dAL = - Y / (Y_pred + 1e-6)
+            dAL = - (Y - Y_pred)
         elif loss_function == 'mse':
             dAL = - (Y - Y_pred)
 
